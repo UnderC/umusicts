@@ -1,6 +1,7 @@
 const ytdl = require('ytdl-core')
 const fs = require('fs')
 const Song = require('./song')
+const events = require('events')
 
 class Server extends events.EventEmitter {
   constructor (gID, stableMode) {
