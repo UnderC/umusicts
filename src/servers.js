@@ -1,4 +1,5 @@
 const events = require('events')
+const Server = require('./server')
 class MusicServers extends events.EventEmitter {
   constructor () {
     super()
