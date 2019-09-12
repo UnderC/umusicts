@@ -100,7 +100,7 @@ class Server extends events.EventEmitter {
 		let inf = await ytdl.getInfo(url)
     const song = new Song(inf)
 		if (!isMyList) this.emit('addSong', song)
-		if (stableMode) {
+		if (this.stableMode) {
 			if (!fs.existsSync(song.path)) {
         let stream = ytdl(url, { filter: 'audioonly', quality: 'highest' })
         stream.pipe(fs.createWriteStream(song.path))
