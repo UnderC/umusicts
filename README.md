@@ -1,2 +1,2 @@
-# umusicts
- support your discord.js music bot
+# umulavats
+ umusicts for lavalink
