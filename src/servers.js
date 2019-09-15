@@ -1,22 +1,21 @@
 const events = require('events')
 const Server = require('./server')
 class MusicServers extends events.EventEmitter {
-  constructor (seoa) {
+  constructor () {
     super()
     this.servers = new Map()
-    this.client = seoa
   }
 
   new (gID, channel) {
-    this.servers.set(gID, new Server(gID, this.client))
-    const here = this._(gID)
+    this.servers.set(gID, new Server(gID))
+    let here = this._(gID)
     this.emit(`${gID}_add`, here)
     if (channel) here._(channel)
     return here
   }
 
   _ (gID, channel) {
-    const res = this.servers.get(gID)
+    let res = this.servers.get(gID)
     if (!res) {
       this.new(gID, channel)
       return this._(gID)
