@@ -1,0 +1,25 @@
+{
+  "name": "umusicts",
+  "version": "1.0.4",
+  "description": "support your discord.js music bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UnderC/umusicts.git"
+  },
+  "keywords": [
+    "music"
+  ],
+  "author": "UnderC",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/UnderC/umusicts/issues"
+  },
+  "homepage": "https://github.com/UnderC/umusicts#readme",
+  "dependencies": {
+    "ytdl-core": "^0.29.7"
+  }
+}
