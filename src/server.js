@@ -1,133 +1,109 @@
-const ytdl = require('ytdl-core')
-const fs = require('fs')
-const Song = require('./song')
 const events = require('events')
 
 class Server extends events.EventEmitter {
-  constructor (gID, stableMode) {
+  constructor (gID, client) {
     super()
     this.gID = gID
-    this.conn = null
-    this.dispatcher = null
+    this.player = null
+    this.player = null
     this.skipSafe = false
-    this.volume = 1
+    this.volume = 50
     this.repeat = false
     this.random = false
     this.playing = false
     this.currentSong = null
     this.songs = []
-    this.stableMode = stableMode || true
+    this.client = client
   }
 
   async _ (channel) {
     if (!channel) return this.emit('notChannel')
-    if (this.conn) return this.emit('alreadyJoined')
-    this.conn = await channel.join()
+    this.player = this.client.player.join(
+      {
+        guild: this.gID,
+        channel: channel.id,
+        host: this.client.player.nodes.first().host
+      },
+      { selfdeaf: false, selfmute: false }
+    )
   }
 
-  start (query) {
-    if (!this.conn) return
-		if (this.playing) return
-		if (query) this.add(query)
-		this.play(this.random ? this.songs.splice(Math.floor(Math.random() * this.songs.length), 1) : this.songs.shift())
-	}
-	
-	clear () {
-		this.songs = []
-	}
+  clear () {
+    this.songs = []
+  }
+
+  seek (sec) {
+    this.player.seek(sec * 1000 + this.player.state.position)
+  }
+
+  start () {
+    if (!this.player) return
+    if (!this.player.playing) this.play(this.songs.shift())
+  }
 
   play (song) {
-    if (!this.conn || !song) return
+    if (!this.player || !song) return
     if (this.repeat) this.songs.push(song)
     this.emit('playing', song)
-    this.playing = true
-    this.skipSafe = false
     this.currentSong = song
-    this.dispatcher = this.stableMode
-      ? this.conn.playFile(song.path)
-      : this.conn.playStream(ytdl(song.url, { filter: 'audioonly', quality: 'highest' }))
-    this.dispatcher.setVolume(this.volume)
+    this.player.play(this.currentSong.track)
+    this.player.volume(this.volume)
 
-    this.dispatcher.on('error', err => {
-      this.emit('error', err)
-      this.skip()
+    this.player.on('end', dat => {
+      if (this.skipSafe) {
+        this.skipSafe = false
+        return this.stop()
+      } else if (dat.reason === 'REPLACED') return
+
+      if (this.songs.length > 0) this.play(this.songs.shift())
+      else this.stop()
     })
 
-    this.dispatcher.on('end', () => {
-      this.playing = false
-      if (this.skipSafe) return this.stop(true)
-      if (this.songs.length > 0) this.play(this.songs.shift())
-      else this.stop(true)
-		})
+    this.player.on('error', err => {
+      console.log(err)
+      this.skip()
+    })
   }
 
   pause () {
-    if (this.dispatcher) { this.dispatcher[this.dispatcher.paused ? 'resume' : 'pause']() }
-  }
-
-  fix (channel) {
-    if (!channel) return
-    if (this.currentSong) this.songs = [this.currentSong].concat(this.songs)
-    this.playing = false
-    this.leave()
-    this._(channel)
-    this.start()
+    if (this.player) this.player.pause(!this.player.paused)
   }
 
   skip () {
-    if (this.dispatcher) this.dispatcher.end()
+    if (this.player) this.player.stop()
   }
 
   stop (cb) {
-    if (this.dispatcher) {
-			if ((typeof cb) === 'undefined') {
-				this.skipSafe = true
-      	this.dispatcher.end()
-			}
-      delete this.dispatcher
+    if (this.player) {
+      this.client.player.leave(this.gID)
+      delete this.player
     }
 
-    if ((typeof cb) === 'function') cb()
+    if (cb) cb()
   }
 
   setVolume (vol) {
     this.emit('changeVol', this.volume, vol)
     this.volume = vol
-    if (this.dispatcher) this.dispatcher.setVolume(vol)
+    if (this.player) this.player.volume(vol)
   }
 
-  async add (url, isMyList) {
-		let inf = await ytdl.getInfo(url)
-    const song = new Song(inf)
-		if (!isMyList) this.emit('addSong', song)
-		if (this.stableMode) {
-			if (!fs.existsSync(song.path)) {
-        let stream = ytdl(url, { filter: 'audioonly', quality: 'highest' })
-        stream.pipe(fs.createWriteStream(song.path))
-        stream.on('error', () => { return this.add(url, isMyList) })
-      }
-    }
-    return this.songs.push(song)
+  add (song, isMyList) {
+    if (!isMyList) this.emit('addSong', song)
+    this.songs.push(song)
   }
 
-  leave () {
-    if (this.conn) this.disconnect()
-  }
-
-  disconnect () {
-    if (!this.conn) return
-    this.skipSafe = true
-    this.conn.disconnect()
-    delete this.conn
-  }
-
-  mylist (m) {
-    if (!m) return
-    m.list = JSON.parse(m.list)
-    this.emit('myList', m)
-    m.list.forEach(v => {
-      this.add(v, true)
-    })
+  getSongs (query) {
+    const node = this.client.player.nodes.first()
+    const params = new URLSearchParams()
+    params.append('identifier', query)
+    return fetch(
+      `http://${node.host}:${node.port}/loadtracks?${params.toString()}`,
+      { headers: { Authorization: node.password } }
+    )
+      .then(res => res.json())
+      .then(data => data.tracks)
+      .catch(console.error)
   }
 }
 
