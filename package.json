@@ -1,6 +1,6 @@
 {
   "name": "umusicts",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "support your discord.js music bot",
   "main": "index.js",
   "scripts": {
@@ -20,6 +20,6 @@
   },
   "homepage": "https://github.com/UnderC/umusicts#readme",
   "dependencies": {
-    "ytdl-core": "^0.29.7"
+    "ytdl-core": "^1.0.7"
   }
 }
